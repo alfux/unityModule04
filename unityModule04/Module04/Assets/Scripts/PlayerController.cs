@@ -1,9 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Resources;
-using System.Runtime.InteropServices.WindowsRuntime;
-using NUnit.Framework.Internal;
-using Unity.VisualScripting;
+using UnityEditor.Build.Content;
 using UnityEngine;
 
 enum State
@@ -19,24 +16,24 @@ enum State
 
 public class PlayerController : MonoBehaviour
 {
+    public float    healthPoints = 3;
     public float    speed = 1;
     public float    jumpSpeed = 1;
 
-    [SerializeField] private Rigidbody2D    rg;
-    [SerializeField] private Animator       anim;
-    [SerializeField] private Vector2        vectorialSpeed;
-    [SerializeField] private Vector2        vectorialJump;
-    [SerializeField] private int            orientation;
-    [SerializeField] private int            state;
-    [SerializeField] private int            idleID;
-    [SerializeField] private int            jumpID;
-    [SerializeField] private int            walkID;
-    [SerializeField] private int            damageID;
-    [SerializeField] private int            turnID;
-    [SerializeField] private int            deathID;
-    [SerializeField] private int            respawnID;
-
-    public void ReverseOrientation() => this.orientation *= -1;
+    private Rigidbody2D        rg;
+    private Animator           anim;
+    private Vector2            vectorialSpeed;
+    private Vector2            vectorialJump;
+    private int                orientation;
+    private int                state;
+    private int                idleID;
+    private int                jumpID;
+    private int                walkID;
+    private int                damageID;
+    private int                turnID;
+    private int                deathID;
+    private int                respawnID;
+    
     public void SetIdle() => this.state = 0;
     public void SetJump() => this.state |= (int)State.Jump;
     public void SetWalk() => this.state |= (int)State.Walk;
@@ -58,9 +55,15 @@ public class PlayerController : MonoBehaviour
     public bool IsDead() => ((this.state >> 5) % 2 == 1);
     public bool IsRespawning() => ((this.state >> 6) % 2 == 1);
 
+    public void ReverseOrientation()
+    {
+        this.orientation *= -1;
+        this.transform.position += this.orientation * Vector3.right * 1.8f;
+    }
+    
     public void UpdateStates()
     {
-        this.anim.SetBool(this.idleID, this.state == 0);
+        this.anim.SetBool(this.idleID, (this.state == 0));
         this.anim.SetBool(this.jumpID, (this.state >> 1) % 2 == 1);
         this.anim.SetBool(this.walkID, (this.state >> 2) % 2 == 1);
         this.anim.SetBool(this.damageID, (this.state >> 3) % 2 == 1);
@@ -69,6 +72,15 @@ public class PlayerController : MonoBehaviour
         this.anim.SetBool(this.respawnID, (this.state >> 6) % 2 == 1);
     }
     
+    public void TakeDamage(float damage)
+    {
+        if (!this.IsDamaged())
+        {
+            this.healthPoints -= damage;
+            this.SetDamage();
+        }
+    }
+
     void Start()
     {
         this.rg = this.gameObject.GetComponent<Rigidbody2D>();
@@ -76,7 +88,7 @@ public class PlayerController : MonoBehaviour
         this.vectorialSpeed = Vector2.right;
         this.vectorialJump = Vector2.up * this.jumpSpeed;
         this.orientation = 1;
-        this.SetIdle();
+        this.SetRespawn();
         this.idleID = Animator.StringToHash("Idle");
         this.jumpID = Animator.StringToHash("Jump");
         this.walkID = Animator.StringToHash("Walk");
@@ -110,14 +122,15 @@ public class PlayerController : MonoBehaviour
         }
         else
             this.UnsetWalk();
-        if (!this.IsWalking() && !this.IsJumping() && !this.IsTurning())
-            this.SetIdle();
     }
 
     void Update()
     {
         this.UpdateStates();
-        this.Controls();
+        if (this.healthPoints <= 0)
+            this.SetDeath();
+        else
+            this.Controls();
     }
 
     void OnCollisionStay2D(Collision2D other)
@@ -133,5 +146,10 @@ public class PlayerController : MonoBehaviour
                 return ;
             }
         }
+    }
+
+    void OnDestroy()
+    {
+        GameManager.GameOver();
     }
 }
