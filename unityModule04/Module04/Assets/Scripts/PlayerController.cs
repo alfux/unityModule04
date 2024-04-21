@@ -16,9 +16,10 @@ enum State
 
 public class PlayerController : MonoBehaviour
 {
-    public float    healthPoints = 3;
-    public float    speed = 1;
-    public float    jumpSpeed = 1;
+    public float        healthPoints = 3;
+    public float        speed = 1;
+    public float        jumpSpeed = 1;
+    public AudioSource  land = null;
 
     private Rigidbody2D        rg;
     private Animator           anim;
@@ -103,7 +104,6 @@ public class PlayerController : MonoBehaviour
         float   move = Input.GetAxis("Horizontal");
         float   jump = Input.GetAxis("Jump");
 
-        
         if (!this.IsJumping() && jump != 0 && Mathf.Abs(this.rg.velocity.y) < this.jumpSpeed)
         {
             this.rg.AddForce(this.vectorialJump, ForceMode2D.Impulse);
@@ -142,6 +142,10 @@ public class PlayerController : MonoBehaviour
         {
             if (Vector2.Dot(points[i].normal, Vector2.up) > 0.5f)
             {
+                if (this.IsJumping() && this.land != null)
+                {
+                    this.land.Play();
+                }
                 this.UnsetJump();
                 return ;
             }
